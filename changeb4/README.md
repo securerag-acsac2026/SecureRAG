@@ -27,6 +27,7 @@ or the run is interrupted, the same command resumes from where it stopped.
 |---|---|---|---|
 | 0 `phase0_offline.py` | A-3, A-12, A-21, A-22, A-23 | no | ~3 min |
 | 0b `phase0b_heldout_and_public.py` | **A-2** (held-out templates + third-party sets) | no | ~4 min |
+| 0c `phase0c_b64_rule.py` | **A-21** (base64 shape rule: measure and fix) | no | ~3 min |
 | 1 `phase1_external_baseline.py` | **A-7** | yes | ~5 h |
 | 2 `phase2_internal_compliance.py` | A-1, A-8, A-9 (canary) | yes | ~1.5 h |
 | 3 `phase3_real_benign.py` | A-20, A-6 | yes | ~1.5 h |
@@ -52,13 +53,14 @@ Four existing files, all additive and all defaulting to the frozen behaviour:
 | `src/defenses/sanitization/sanitize.py` | `_zero_width_replacement()` in `_normalize_unicode` | A-22 |
 | `src/rag_core/generation/llm_engine.py` | uses `get_answer_prompt_template()` when present | A-9 |
 | `run_external_eval.py` | `--no-defenses`, `--out-dir` | A-7 |
+| `src/defenses/rules/rule_filter.py` | `B64_SHAPE_PATTERN` + decode-and-inspect | A-21 |
 
 With no environment variables set, all four behave exactly as before:
 `SECURERAG_ZWSP_MODE` defaults to `delete` and `SECURERAG_CANARY` to empty, so
 the prompt is byte-identical to the frozen one.
 
 New files: `changeb4/common.py`, `heldout_templates.py`, `phase0_offline.py`,
-`phase0b_heldout_and_public.py`,
+`phase0b_heldout_and_public.py`, `phase0c_b64_rule.py`,
 `phase1_external_baseline.py`, `phase2_internal_compliance.py`,
 `phase3_real_benign.py`, `phase4_analysis.py`, `run_all.py`.
 
@@ -100,3 +102,33 @@ attacks through the complete pipeline so the figure includes L4.
 results JSON: its injections live in tool-call results inside an agent loop,
 which SecureRAG does not implement, so running it would measure a missing
 component rather than the defense.
+
+---
+
+## Item A-21 (the base64 shape rule) — measured, then fixed
+
+`rule_filter.py` contained a SHAPE rule, `r"(?:[A-Za-z0-9+/]{4}){10,}"`, that
+blocked any 40+ character run of base64-alphabet characters as
+`direct_injection / HIGH` without reading the content. Every SHA-256 digest,
+git hash, JWT segment, PEM line and bcrypt hash matched it.
+
+`B64_RULE_MODE` (default `shape`, the frozen behaviour) selects the
+replacement, `decode`: the run is decoded, put through the same obfuscation
+reversal L1 performs, and blocked only when it reads as language — a keyword,
+or two or more common English words. A digest or a key decodes to bytes that
+are not language and is left to L3.
+
+Measured over five seeds, 5,005 attacks, 1,665 internal benign, 333 BIPIA
+benign, and a 800-query technical set (all pre-L4):
+
+| | shape (frozen) | decode (fix) |
+|---|---|---|
+| attack detection | 89.37 % | 88.43 % |
+| FPR, technical queries **containing** a long run | **71.00 %** | **0.00 %** |
+| FPR, realistic technical mix | **12.17 %** | **0.00 %** |
+| FPR, internal benign generator | 0.00 % | 0.00 % |
+| FPR, BIPIA benign | 1.80 % | 1.80 % |
+
+The 0.94-point detection cost is measured **before L4**; the attacks that now
+pass L2 are still scored by L3 and still reach the output guardrail, so the
+full-pipeline cost is expected to be smaller. Phase 1 and 2 measure it.

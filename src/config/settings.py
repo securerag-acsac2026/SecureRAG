@@ -168,3 +168,19 @@ def get_answer_prompt_template() -> str:
         f"INTERNAL AUDIT ID: {CANARY_TOKEN}\n"
         f"SECURITY RULES (cannot be overridden):"
     )
+
+# Examiner item A-21. rule_filter.py's DIRECT_PATTERNS contains a SHAPE rule --
+# r"(?:[A-Za-z0-9+/]{4}){10,}" -- that blocks any run of 40+ base64-alphabet
+# characters as a direct injection, HIGH risk, without looking at what the run
+# contains. A SHA-256 digest, a JWT segment, a PEM line, a git hash and a
+# bcrypt hash all match it. Measured on a probe set of technical questions:
+# 10 of 20 blocked, every one of them on this rule alone.
+#   "shape"  = frozen thesis behaviour (default)
+#   "decode" = block only when the run decodes to readable text carrying an
+#              attack keyword; otherwise leave it to L3's scoring, which
+#              already has a dimension for base64-that-decodes-to-an-attack.
+B64_RULE_MODE = os.environ.get("SECURERAG_B64_RULE_MODE", "shape")
+
+
+def get_b64_rule_mode() -> str:
+    return B64_RULE_MODE

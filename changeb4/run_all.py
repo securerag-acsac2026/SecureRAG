@@ -28,6 +28,8 @@ PHASES = [
      ["changeb4/phase0_offline.py"], "~3 min"),
     ("0b", "circularity: held-out templates + third-party sets (A-2)",
      "phase0b/A2_results.json", ["changeb4/phase0b_heldout_and_public.py"], "~4 min"),
+    ("0c", "base64 shape rule: measure and fix (A-21)",
+     "phase0c/A21_b64_rule_results.json", ["changeb4/phase0c_b64_rule.py"], "~3 min"),
     (1, "external undefended baseline (A-7)", "phase1/A7_summary.json",
      ["changeb4/phase1_external_baseline.py"], "~5 h"),
     (2, "internal compliance + canary (A-1, A-8, A-9)", "phase2/A1_summary.json",
