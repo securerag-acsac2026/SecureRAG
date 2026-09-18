@@ -1,0 +1,144 @@
+{
+  "A2b_heldout_templates": {
+    "split": {
+      "salt": "changeb4",
+      "per_tier": {
+        "conversational_drift": {
+          "full": 154,
+          "dev": 77,
+          "test": 77
+        },
+        "semantic_camouflage": {
+          "full": 181,
+          "dev": 104,
+          "test": 77
+        },
+        "context_poisoning": {
+          "full": 210,
+          "dev": 105,
+          "test": 105
+        },
+        "psychological_manip": {
+          "full": 182,
+          "dev": 95,
+          "test": 87
+        },
+        "nested_hiding": {
+          "full": 182,
+          "dev": 84,
+          "test": 98
+        },
+        "token_smuggling": {
+          "full": 180,
+          "dev": 89,
+          "test": 91
+        },
+        "trust_escalation": {
+          "full": 156,
+          "dev": 85,
+          "test": 71
+        },
+        "indirect_poisoning": {
+          "full": 210,
+          "dev": 115,
+          "test": 95
+        }
+      },
+      "totals": {
+        "full": 1455,
+        "dev": 754,
+        "test": 701
+      }
+    },
+    "halves": {
+      "dev": {
+        "seeds": [
+          42,
+          137,
+          271
+        ],
+        "per_seed_detection_pct": [
+          90.3,
+          88.71,
+          89.73
+        ],
+        "mean": 89.58,
+        "std": 0.66,
+        "per_category_detection_pct": {
+          "context_poisoning": 100.0,
+          "conversational_drift": 100.0,
+          "indirect_poisoning": 97.1,
+          "nested_hiding": 91.3,
+          "psychological_manip": 96.0,
+          "semantic_camouflage": 34.9,
+          "token_smuggling": 99.6,
+          "trust_escalation": 95.2
+        }
+      },
+      "test": {
+        "seeds": [
+          42,
+          137,
+          271
+        ],
+        "per_seed_detection_pct": [
+          89.75,
+          88.73,
+          88.73
+        ],
+        "mean": 89.07,
+        "std": 0.48,
+        "per_category_detection_pct": {
+          "context_poisoning": 100.0,
+          "conversational_drift": 99.0,
+          "indirect_poisoning": 98.2,
+          "nested_hiding": 84.2,
+          "psychological_manip": 95.2,
+          "semantic_camouflage": 34.2,
+          "token_smuggling": 99.3,
+          "trust_escalation": 96.2
+        }
+      }
+    },
+    "gap_dev_minus_test_pts": 0.51
+  },
+  "A2c_public_sets": {
+    "tensortrust_hijacking": {
+      "n": 776,
+      "blocked_pre_l4": 460,
+      "detection_pre_l4_pct": 59.28,
+      "by_layer": {
+        "L3": 218,
+        "reached": 316,
+        "L2": 141,
+        "L1": 101
+      },
+      "available": true,
+      "source": "https://raw.githubusercontent.com/HumanCompatibleAI/tensor-trust-data/main/benchmarks/hijacking-robustness/v1/hijacking_robustness_dataset.jsonl",
+      "provenance": "written by third-party players of the public Tensor Trust game"
+    },
+    "tensortrust_extraction": {
+      "n": 570,
+      "blocked_pre_l4": 157,
+      "detection_pre_l4_pct": 27.54,
+      "by_layer": {
+        "reached": 413,
+        "L2": 112,
+        "L3": 19,
+        "L1": 26
+      },
+      "available": true,
+      "source": "https://raw.githubusercontent.com/HumanCompatibleAI/tensor-trust-data/main/benchmarks/extraction-robustness/v1/extraction_robustness_dataset.jsonl",
+      "provenance": "written by third-party players of the public Tensor Trust game"
+    },
+    "hackaprompt": {
+      "available": false,
+      "how_to_get_it": "huggingface-cli download hackaprompt/hackaprompt-dataset --repo-type dataset  (or pass --hackaprompt-file <csv>). Blocked networks will fail here; the file is the only requirement."
+    },
+    "agentdojo": {
+      "available": false,
+      "deliberate": true,
+      "reason": "AgentDojo injects into tool-call results inside an agent loop. SecureRAG has no agent runtime or tool layer, so the benchmark would measure a missing component rather than the defense. Reported as out of scope rather than silently omitted."
+    }
+  }
+}

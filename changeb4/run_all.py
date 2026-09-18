@@ -26,6 +26,8 @@ from changeb4.common import OUT_ROOT  # noqa: E402
 PHASES = [
     (0, "offline  (A-3, A-12, A-21, A-22, A-23)", "phase0/phase0_results.json",
      ["changeb4/phase0_offline.py"], "~3 min"),
+    ("0b", "circularity: held-out templates + third-party sets (A-2)",
+     "phase0b/A2_results.json", ["changeb4/phase0b_heldout_and_public.py"], "~4 min"),
     (1, "external undefended baseline (A-7)", "phase1/A7_summary.json",
      ["changeb4/phase1_external_baseline.py"], "~5 h"),
     (2, "internal compliance + canary (A-1, A-8, A-9)", "phase2/A1_summary.json",
@@ -74,7 +76,8 @@ def preflight(model):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="Mistral-7B")
-    ap.add_argument("--only", type=int, default=None)
+    ap.add_argument("--only", default=None,
+                    help="0, 0b, 1, 2, 3 or 4")
     ap.add_argument("--preflight", action="store_true")
     ap.add_argument("--smoke", action="store_true",
                     help="tiny sample sizes -- proves the plumbing in minutes")
@@ -91,7 +94,7 @@ def main():
 
     t_start = time.time()
     for num, label, marker, cmd, cost in PHASES:
-        if args.only is not None and num != args.only:
+        if args.only is not None and str(num) != str(args.only):
             continue
         done = (OUT_ROOT / marker).exists()
         print("\n" + "=" * 74)
@@ -101,9 +104,11 @@ def main():
             print(f"  already complete ({marker}) -- skipping (use --force to redo)")
             continue
         full = [sys.executable] + cmd
-        if num in (1, 2, 3):
+        if num in (1, 2, 3, "0b"):
             full += ["--model", args.model]
         if args.smoke:
+            if num == "0b":
+                full += ["--n-per-half", "120"]
             if num == 1:
                 full += ["--limit", "12"]
             if num == 2:
