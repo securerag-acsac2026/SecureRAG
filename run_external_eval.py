@@ -43,6 +43,19 @@ def load_eval_set(path: Path = EVAL_SET_PATH):
 def run():
     parser = argparse.ArgumentParser(description=__doc__)
     add_model_arg(parser)
+    # ── Change-B4 (examiner item A-7) ────────────────────────────────────
+    # The thesis reports a DEFENDED external compliance figure (15.92%) with
+    # no undefended run of the same 986 attacks under the same compliance
+    # classifier, so nothing in the thesis shows the defense lowered actual
+    # compliance externally. --no-defenses produces exactly that missing run:
+    # identical samples, identical scoring path, defenses off.
+    parser.add_argument("--no-defenses", action="store_true",
+                        help="Run the UNDEFENDED baseline pipeline over the same "
+                             "samples (examiner item A-7). Output filenames get a "
+                             "'__baseline' suffix so nothing is overwritten.")
+    parser.add_argument("--out-dir", type=str, default=None,
+                        help="Directory for the results CSV and summary JSON "
+                             "(default: alongside this script).")
     parser.add_argument("--limit", type=int, default=None,
                          help="Only run the first N samples (fast diagnostic subset). "
                               "eval_set.json is pre-shuffled by build_eval_set.py, so this "
@@ -83,8 +96,11 @@ def run():
         suffix += "__catfilter"
     if args.limit:
         suffix += f"__subset{args.limit}"
-    results_csv_path = SCRIPT_DIR / f"bipia_external_results__{suffix}.csv"
-    summary_json_path = SCRIPT_DIR / f"bipia_external_summary__{suffix}.json"
+    out_dir = Path(args.out_dir) if args.out_dir else SCRIPT_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
+    run_tag = "__baseline" if args.no_defenses else ""
+    results_csv_path = out_dir / f"bipia_external_results__{suffix}{run_tag}.csv"
+    summary_json_path = out_dir / f"bipia_external_summary__{suffix}{run_tag}.json"
 
     samples = load_eval_set(eval_path)
     if args.category:
@@ -97,8 +113,10 @@ def run():
         print(f"Category filter applied: {len(samples)} samples across {len(wanted - unknown)} categories")
     if args.limit:
         samples = samples[:args.limit]
-    print(f"Loading SecureRAG ({selected_model})...")
-    rag = SecureRAG(enable_defenses=True, model_path=settings.LLM_MODEL_PATH)
+    defenses_on = not args.no_defenses
+    print(f"Loading SecureRAG ({selected_model})"
+          f"{'' if defenses_on else '  [DEFENSES DISABLED -- baseline run]'}...")
+    rag = SecureRAG(enable_defenses=defenses_on, model_path=settings.LLM_MODEL_PATH)
     print(f"Running {len(samples)} BIPIA samples...\n")
 
     results = []
@@ -282,6 +300,7 @@ def run():
         # generation settings it ran under cannot be matched to the code
         # state that produced it once either changes.
         "eval_set_file": str(eval_path.name),
+        "defenses_enabled": defenses_on,
         "anomaly_threshold": settings.get_anomaly_threshold(),
         "semantic_threshold": settings.get_semantic_threshold(),
         "temperature": getattr(settings, "TEMPERATURE", None),

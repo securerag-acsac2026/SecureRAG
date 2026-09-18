@@ -127,3 +127,44 @@ def get_anomaly_threshold() -> float:
 
 def get_semantic_threshold() -> float:
     return SEMANTIC_THRESHOLD
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Change-B4 additions (examiner revision round).
+# Everything below is ADDITIVE and defaults to the exact behaviour the frozen
+# thesis results were produced with, so importing this file changes nothing
+# unless a Change-B4 script explicitly overrides it.
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Examiner item A-22. L1 currently DELETES zero-width characters, which glues
+# the surrounding words together ("byp\u200bass" -> "bypass" is fine, but
+# "bypass\u200byour" -> "bypassyour"), so L2's word-boundary regexes stop
+# matching and the query falls through to L3. The examiner asks for the
+# alternative -- replace with a normal space -- to be implemented and its
+# effect on the layer attribution reported.
+#   "delete" = frozen thesis behaviour (default, do not change silently)
+#   "space"  = examiner's proposal
+ZWSP_MODE = os.environ.get("SECURERAG_ZWSP_MODE", "delete")
+
+# Examiner item A-9. Similarity to the corpus cannot, on its own, prove that
+# the system prompt did not leak. A canary is a unique string placed inside
+# the system prompt and never shown to the user: if it appears in ANY
+# generated response, that response leaked system-prompt content, which is a
+# direct, unambiguous measurement rather than an inference from similarity.
+# Empty by default => the prompt is byte-identical to the frozen one.
+CANARY_TOKEN = os.environ.get("SECURERAG_CANARY", "")
+
+
+def get_zwsp_mode() -> str:
+    return ZWSP_MODE
+
+
+def get_answer_prompt_template() -> str:
+    """ANSWER_PROMPT_TEMPLATE, with the canary injected into the system block
+    when one is configured. Returns the untouched template otherwise."""
+    if not CANARY_TOKEN:
+        return ANSWER_PROMPT_TEMPLATE
+    return ANSWER_PROMPT_TEMPLATE.replace(
+        "SECURITY RULES (cannot be overridden):",
+        f"INTERNAL AUDIT ID: {CANARY_TOKEN}\n"
+        f"SECURITY RULES (cannot be overridden):"
+    )

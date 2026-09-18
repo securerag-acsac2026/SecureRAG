@@ -79,13 +79,37 @@ UNICODE_LOOKALIKE_MAP = {
 }
 
 
+# Examiner item A-22: the zero-width entries above map to '' (deletion),
+# which removes the word boundary the L2 regexes rely on. settings.ZWSP_MODE
+# selects between that frozen behaviour and the examiner's proposal of
+# substituting a normal space. Defined here, next to the map it overrides,
+# so the two can never drift apart.
+_ZERO_WIDTH_CHARS = ('\u200b', '\u200c', '\u200d', '\u2060', '\ufeff')
+
+
+def _zero_width_replacement() -> str:
+    try:
+        from src.config import settings as _settings
+        return ' ' if _settings.get_zwsp_mode() == 'space' else ''
+    except Exception:
+        return ''
+
+
 def _normalize_unicode(text: str) -> str:
     """Unicode normalization and prevention of lookalike-character (homoglyph) attacks"""
     # NFC normalization first
     text = unicodedata.normalize('NFC', text)
     # Replacing similar letters
+    zw_repl = _zero_width_replacement()
     for fake_char, real_char in UNICODE_LOOKALIKE_MAP.items():
+        if fake_char in _ZERO_WIDTH_CHARS:
+            real_char = zw_repl
         text = text.replace(fake_char, real_char)
+    if zw_repl == ' ':
+        # Collapse the runs a per-character substitution can create, so a
+        # word split by several joiners becomes one space, not five.
+        import re as _re
+        text = _re.sub(r' {2,}', ' ', text)
     # Delete control characters except for new lines.
     text = ''.join(c for c in text if unicodedata.category(c) != 'Cc' or c in '\n\r\t')
     return text
