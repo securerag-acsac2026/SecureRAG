@@ -196,6 +196,45 @@ def public_sets(hackaprompt_file=None):
     return res, all_rows
 
 
+# ── A-2, the specific claim: "L2 patterns mirror generator categories" ─────
+SAME_NAME = {"context_poisoning": "context_poisoning",
+             "trust_escalation": "trust_escalation",
+             "nested_hiding": "nested_hiding",
+             "psychological_manip": "authority_impersonation",
+             "indirect_poisoning": "indirect_authorization"}
+
+
+def tier_crosstab(seeds=(42, 137, 271)):
+    """For every generator category, which L2 tier actually blocked it? The
+    criticism assumes a category is detected BY THE TIER THAT SHARES ITS NAME.
+    That is a testable claim, and this table tests it instead of conceding it."""
+    from src.defenses.sanitization.sanitize import sanitize_input   # noqa
+    import changeb4.common as cm
+    X = collections.defaultdict(collections.Counter)
+    tot = collections.Counter()
+    for s in seeds:
+        for a in cm.make_batch(s)[0]:
+            cat = cm.base_tier(a["type"])
+            tot[cat] += 1
+            r = cm.run_input_layers(a["payload"])
+            key = (r["violation_type"] or "?") if r["blocked_at"] == "L2" \
+                else (r["blocked_at"] or "reached")
+            X[cat][key] += 1
+    out = {}
+    print(f"    {'generator category':<24}{'n':>5}{'by same-name tier':>20}   top blockers")
+    for cat in sorted(tot, key=lambda c: -tot[c]):
+        same = SAME_NAME.get(cat)
+        n = tot[cat]
+        share = round(100 * X[cat].get(same, 0) / n, 1) if same else None
+        out[cat] = {"n": n, "same_name_l2_tier": same,
+                    "blocked_by_same_name_tier_pct": share,
+                    "blockers": {k: round(100 * v / n, 1)
+                                 for k, v in X[cat].most_common()}}
+        top = ", ".join(f"{k} {100*v/n:.0f}%" for k, v in X[cat].most_common(3))
+        print(f"    {cat:<24}{n:>5}{(str(share)+'%') if same else '-- none --':>20}   {top}")
+    return out
+
+
 def full_pipeline_public(rows, n, model):
     """Runs a sample of the third-party attacks through the complete pipeline,
     so the reported third-party figure includes L4 rather than stopping at L3."""
@@ -247,6 +286,8 @@ def main():
     print("=" * 74)
     print("\n(b) held-out templates")
     ho = heldout_templates(args.n_per_half)
+    print("\n(b2) which L2 tier actually blocks each generator category")
+    xt = tier_crosstab()
     print("\n(c) third-party public attack sets")
     pub, rows = public_sets(args.hackaprompt_file)
     if rows:
@@ -256,8 +297,8 @@ def main():
     if args.full_sample:
         full = full_pipeline_public(rows, args.full_sample, args.model)
 
-    save_json({"A2b_heldout_templates": ho, "A2c_public_sets": pub,
-               "A2c_full_pipeline": full},
+    save_json({"A2b_heldout_templates": ho, "A2b2_tier_crosstab": xt,
+               "A2c_public_sets": pub, "A2c_full_pipeline": full},
               "phase0b", "A2_results.json")
     print("\nPhase 0b complete.")
 
