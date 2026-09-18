@@ -30,12 +30,17 @@ PHASES = [
      "phase0b/A2_results.json", ["changeb4/phase0b_heldout_and_public.py"], "~4 min"),
     ("0c", "base64 shape rule: measure and fix (A-21)",
      "phase0c/A21_b64_rule_results.json", ["changeb4/phase0c_b64_rule.py"], "~3 min"),
+    ("0d", "audit of the fixes (anti-circularity checks)",
+     "phase0d/audit_results.json", ["changeb4/phase0d_audit.py"], "~2 min"),
     (1, "external undefended baseline (A-7)", "phase1/A7_summary.json",
      ["changeb4/phase1_external_baseline.py"], "~5 h"),
     (2, "internal compliance + canary (A-1, A-8, A-9)", "phase2/A1_summary.json",
      ["changeb4/phase2_internal_compliance.py"], "~1.5 h"),
     (3, "real benign queries + latency (A-20, A-6)", "phase3/A20_A6_summary.json",
      ["changeb4/phase3_real_benign.py"], "~1.5 h"),
+    (5, "full pipeline on held-out seeds (A-3, A-12, A-10)",
+     "phase5/A3_A12_A10_summary.json",
+     ["changeb4/phase5_full_pipeline_seeds.py"], "~1.5 h"),
     (4, "analysis (A-9 ROC, A-8 kappa, A-10)", "phase4/phase4_analysis.json",
      ["changeb4/phase4_analysis.py"], "~1 min"),
 ]
@@ -106,7 +111,7 @@ def main():
             print(f"  already complete ({marker}) -- skipping (use --force to redo)")
             continue
         full = [sys.executable] + cmd
-        if num in (1, 2, 3, "0b"):
+        if num in (1, 2, 3, 5, "0b"):
             full += ["--model", args.model]
         if args.smoke:
             if num == "0b":
@@ -117,6 +122,8 @@ def main():
                 full += ["--n", "8"]
             if num == 3:
                 full += ["--n-full", "8"]
+            if num == 5:
+                full += ["--limit", "40", "--seeds", "42"]
         t0 = time.time()
         r = subprocess.run(full, cwd=ROOT)
         if r.returncode != 0:

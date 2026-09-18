@@ -28,6 +28,8 @@ or the run is interrupted, the same command resumes from where it stopped.
 | 0 `phase0_offline.py` | A-3, A-12, A-21, A-22, A-23 | no | ~3 min |
 | 0b `phase0b_heldout_and_public.py` | **A-2** (held-out templates + third-party sets) | no | ~4 min |
 | 0c `phase0c_b64_rule.py` | **A-21** (base64 shape rule: measure and fix) | no | ~3 min |
+| 0d `phase0d_audit.py` | audit of the fixes (anti-circularity) | no | ~2 min |
+| 5 `phase5_full_pipeline_seeds.py` | **A-3, A-12, A-10** with L4 and the model | yes | ~1.5 h |
 | 1 `phase1_external_baseline.py` | **A-7** | yes | ~5 h |
 | 2 `phase2_internal_compliance.py` | A-1, A-8, A-9 (canary) | yes | ~1.5 h |
 | 3 `phase3_real_benign.py` | A-20, A-6 | yes | ~1.5 h |
@@ -60,7 +62,8 @@ With no environment variables set, all four behave exactly as before:
 the prompt is byte-identical to the frozen one.
 
 New files: `changeb4/common.py`, `heldout_templates.py`, `phase0_offline.py`,
-`phase0b_heldout_and_public.py`, `phase0c_b64_rule.py`,
+`phase0b_heldout_and_public.py`, `phase0c_b64_rule.py`, `phase0d_audit.py`,
+`phase5_full_pipeline_seeds.py`,
 `phase1_external_baseline.py`, `phase2_internal_compliance.py`,
 `phase3_real_benign.py`, `phase4_analysis.py`, `run_all.py`.
 
@@ -132,3 +135,45 @@ benign, and a 800-query technical set (all pre-L4):
 The 0.94-point detection cost is measured **before L4**; the attacks that now
 pass L2 are still scored by L3 and still reach the output guardrail, so the
 full-pipeline cost is expected to be smaller. Phase 1 and 2 measure it.
+
+---
+
+## Recommended configuration
+
+```bash
+export SECURERAG_B64_RULE_MODE=decode
+export SECURERAG_ZWSP_MODE=space
+```
+
+Measured over five seeds, pre-L4 (`phase0d_audit.py` prints the whole matrix):
+
+| b64 rule | zero-width | detection | L1 / L2 / L3 blocks | internal FP | BIPIA FP |
+|---|---|---|---|---|---|
+| shape | delete (frozen) | 89.37 ± 0.69 | 161.4 / 708.2 / 25.0 | 0 / 1665 | 6 / 333 |
+| shape | space | 89.55 ± 0.67 | 172.0 / 716.0 / 8.4 | 0 / 1665 | 6 / 333 |
+| decode | delete | 88.43 ± 0.84 | 161.4 / 646.0 / 77.8 | 0 / 1665 | 6 / 333 |
+| **decode** | **space** | **89.15 ± 0.75** | 172.0 / 699.6 / 20.8 | 0 / 1665 | 6 / 333 |
+
+The two fixes interact. `space` restores the word boundaries L2 needs, which
+recovers most of what `decode` gives up and keeps L3's own contribution close
+to the frozen value. Net cost against the frozen configuration: **0.22 points
+of pre-L4 detection**, inside one standard deviation, in exchange for removing
+a false-positive class that blocked 71 % of technical queries containing a
+long token and 92 % of a held-out set built from token types the fix never saw.
+
+## Why the 0 % is not a fitted zero
+
+`phase0d_audit.py` exists to try to break the fix:
+
+1. **Held-out technical set** — different templates AND different token types
+   (SSH keys, X.509 serials, IPFS CIDs, Ethereum addresses, Nix hashes,
+   Kerberos blobs, GPG fingerprints). shape blocks 221/240; decode blocks 0/240.
+2. **Not a disabled rule** — base64-wrapped payloads, including double-encoded
+   ones, are still caught 12/12.
+3. **A-9 gating** — across five seeds, zero attacks skip L4 because the anomaly
+   score is zero, so the gate does not create a silent bypass.
+4. **A-22** — what each layer reads is confirmed against `src/pipeline.py`:
+   L1 sanitizes the original query, L2 reads the sanitized one, **L3 scores the
+   ORIGINAL query**, retrieval and generation use the sanitized one.
+5. **Full switch matrix** — four configurations, five seeds, attacks and both
+   benign sets, so the recommendation is read off a table.
