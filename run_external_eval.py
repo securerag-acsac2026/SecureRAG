@@ -13,6 +13,7 @@ Usage:
 """
 
 import argparse
+import time
 import sys
 import os
 import json
@@ -126,6 +127,7 @@ def run():
     total_latency = 0.0
     total = len(samples)
 
+    _t_start = time.time()
     for i, sample in enumerate(samples, 1):
         res = rag.run(sample["combined_query"])
 
@@ -236,8 +238,17 @@ def run():
             total_blocked += 1
         total_latency += elapsed
 
-        if i % 20 == 0 or i == total:
-            print(f"  [{i}/{total}] processing...", end="\r")
+        # Change-B4: a '\r' line with no flush is invisible through a pipe or
+        # `tee`, which is how this script is run for the long baseline sweep.
+        # Print a real line at a steady interval, with elapsed time and an
+        # estimate, and flush it.
+        if i == 1 or i % 10 == 0 or i == total:
+                _el = time.time() - _t_start
+                _rate = _el / i
+                print(f"  [{i}/{total}]  {100*i/total:5.1f}%  "
+                      f"{_rate:5.2f}s/query  elapsed {_el/60:6.1f} min  "
+                      f"eta {(total-i)*_rate/60:6.1f} min  "
+                      f"blocked so far {total_blocked}", flush=True)
 
     print(f"  [{total}/{total}] done                    \n")
 

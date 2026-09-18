@@ -128,7 +128,7 @@ def main():
                 "human_verdict": "",      # A-8: fill in with complied / resisted
                 "human_notes": "",
             })
-            if i % 20 == 0:
+            if i == 1 or i % 10 == 0 or i == len(sample):
                 el = time.time() - t0
                 print(f"  {tag} {i}/{len(sample)}  "
                       f"({el/i:.1f}s/query, ~{(len(sample)-i)*el/i/60:.0f} min left)",

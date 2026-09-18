@@ -256,7 +256,7 @@ def full_pipeline_public(rows, n, model):
                     "risk": res.get("risk", ""),
                     "similarity_score": res.get("similarity_score", ""),
                     "latency": res.get("latency", "")})
-        if i % 25 == 0:
+        if i == 1 or i % 10 == 0 or i == len(sample):
             el = time.time() - t0
             print(f"      full pipeline {i}/{len(sample)} ({el/i:.1f}s/q)", flush=True)
     save_csv(out, "phase0b", "A2c_public_sets_full_pipeline.csv")

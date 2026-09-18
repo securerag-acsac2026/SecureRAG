@@ -14,6 +14,7 @@ exists, so an interrupted run resumes instead of starting over.
 Nothing outside Change-B4/ is written. No existing result file is touched.
 """
 import argparse
+import os
 import subprocess
 import sys
 import time
@@ -110,7 +111,7 @@ def main():
         if done and not args.force:
             print(f"  already complete ({marker}) -- skipping (use --force to redo)")
             continue
-        full = [sys.executable] + cmd
+        full = [sys.executable, "-u"] + cmd
         if num in (1, 2, 3, 5, "0b"):
             full += ["--model", args.model]
         if args.smoke:
@@ -125,7 +126,8 @@ def main():
             if num == 5:
                 full += ["--limit", "40", "--seeds", "42"]
         t0 = time.time()
-        r = subprocess.run(full, cwd=ROOT)
+        env = dict(os.environ, PYTHONUNBUFFERED="1")
+        r = subprocess.run(full, cwd=ROOT, env=env)
         if r.returncode != 0:
             print(f"\nPHASE {num} FAILED (exit {r.returncode}). "
                   f"Everything completed so far is kept; re-run the same "

@@ -113,7 +113,7 @@ def main():
                     "similarity_score": res.get("similarity_score", ""),
                     "latency": res.get("latency", 0.0),
                 })
-                if i % 25 == 0:
+                if i == 1 or i % 10 == 0 or i == len(sample):
                     el = time.time() - t0
                     print(f"  {tag} {i}/{len(sample)} ({el/i:.1f}s/q)", flush=True)
         save_csv(full_rows, "phase3", "A20_real_query_full_pipeline.csv")

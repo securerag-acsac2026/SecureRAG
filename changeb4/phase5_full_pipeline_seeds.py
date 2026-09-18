@@ -94,7 +94,7 @@ def main():
                          "l4_checked": res.get("l4_checked", ""),
                          "similarity_score": res.get("similarity_score", ""),
                          "latency": res.get("latency", "")})
-            if i % 100 == 0:
+            if i == 1 or i % 50 == 0 or i == len(attacks):
                 el = time.time() - t0
                 print(f"    attacks {i}/{len(attacks)} ({el/i:.2f}s/q, "
                       f"~{(len(attacks)-i)*el/i/60:.0f} min left)", flush=True)
